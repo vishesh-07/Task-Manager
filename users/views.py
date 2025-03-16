@@ -166,7 +166,7 @@ class UserAuthViewSet(GenericViewSet):
 class UserDetailViewSet(GenericViewSet):
     queryset = User.objects.all()
     user_profile_serializer = UserProfileSerializer
-    user_profile_update_serializer = UserProfileSerializer
+    user_profile_update_serializer = UserProfileUpdateSerializer
     permission_classes = [IsAuthenticated]
 
     @action(methods=["get"], detail=False, url_path="profile")
