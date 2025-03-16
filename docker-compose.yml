@@ -24,6 +24,25 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+  
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  celery:
+    build: .
+    command: celery -A taskmanager worker --loglevel=info
+    depends_on:
+      - redis
+      - djangoapp
+
+  celery-beat:
+    build: .
+    command: celery -A taskmanager beat --loglevel=info
+    depends_on:
+      - redis
+      - djangoapp
 
 volumes:
   pgdata:
