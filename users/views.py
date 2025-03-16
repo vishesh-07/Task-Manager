@@ -10,9 +10,15 @@ from rest_framework.status import (
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.contrib.auth.hashers import make_password
 
 from .models import User
-from .serializers import RegisterSerializer, LoginSerializer
+from .serializers import (
+    RegisterSerializer,
+    LoginSerializer,
+    UserProfileSerializer,
+    UserProfileUpdateSerializer,
+)
 
 
 # Route - /auth/
@@ -20,6 +26,7 @@ class UserAuthViewSet(GenericViewSet):
     queryset = User.objects.all()
     registration_serializer = RegisterSerializer
     login_serializer = LoginSerializer
+    user_profile_serializer = UserProfileSerializer
     permission_classes = [IsAuthenticated]
 
     @action(
@@ -126,3 +133,75 @@ class UserAuthViewSet(GenericViewSet):
                 {"message": "Unable to Logout", "error": str(error)},
                 status=HTTP_400_BAD_REQUEST,
             )
+
+    @action(
+        methods=["post"],
+        detail=False,
+        url_path="refresh-token",
+        permission_classes=[AllowAny],
+    )
+    def refresh_token(self, request):
+        try:
+            refresh_token = request.data.get("refresh_token")
+            if not refresh_token:
+                return Response(
+                    {"message": "Refresh token required"}, status=HTTP_400_BAD_REQUEST
+                )
+
+            token = RefreshToken(refresh_token)
+            return Response(
+                {
+                    "access_token": str(token.access_token),
+                },
+                status=HTTP_200_OK,
+            )
+        except Exception as error:
+            return Response(
+                {"message": "Invalid or expired refresh token", "error": str(error)},
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+
+# Route - /detail/
+class UserDetailViewSet(GenericViewSet):
+    queryset = User.objects.all()
+    user_profile_serializer = UserProfileSerializer
+    user_profile_update_serializer = UserProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    @action(methods=["get"], detail=False, url_path="profile")
+    def profile(self, request):
+        try:
+            serializer = self.user_profile_serializer(request.user)
+            return Response(
+                {"message": "Profile retrieved", "data": serializer.data},
+                status=HTTP_200_OK,
+            )
+        except Exception as error:
+            return Response(
+                {"message": "Unable to retrieve profile", "error": str(error)},
+                status=HTTP_400_BAD_REQUEST,
+            )
+
+    @action(
+        methods=["put"],
+        detail=False,
+        url_path="update-profile"
+    )
+    def update_profile(self, request):
+        user = request.user
+        serializer = UserProfileUpdateSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            if "password" in serializer.validated_data:
+                serializer.validated_data["password"] = make_password(
+                    serializer.validated_data["password"]
+                )
+            serializer.save()
+            return Response(
+                {"message": "Profile updated", "data": serializer.data},
+                status=HTTP_200_OK,
+            )
+        return Response(
+            {"message": "Invalid data", "errors": serializer.errors},
+            status=HTTP_400_BAD_REQUEST,
+        )
