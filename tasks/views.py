@@ -18,6 +18,10 @@ from django.core.cache import cache
 from urllib.parse import urlencode
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from concurrent.futures import ThreadPoolExecutor
+from django.http import HttpResponse
+from io import StringIO
+import csv
 
 from users.models import User
 from .serializers import TaskSerializer
@@ -193,6 +197,30 @@ class TasksViewSet(GenericViewSet, ListModelMixin):
                 },
                 status=HTTP_200_OK,
             )
+
+        except Exception as error:
+            return Response({"message": str(error)}, status=HTTP_400_BAD_REQUEST)
+        
+    @action(detail=False, methods=["GET"], url_path="export")
+    def export_tasks(self, request):
+        try:
+            def generate_csv():
+                tasks = Task.objects.all().values("title", "description", "priority", "due_date", "status", "created_by__email", "assigned_to__email")
+                output = StringIO()
+                writer = csv.DictWriter(output, fieldnames=["title", "description", "priority", "due_date", "status", "created_by__email", "assigned_to__email"])
+                writer.writeheader()
+                for task in tasks:
+                    writer.writerow(task)
+                output.seek(0)
+                return output.getvalue()
+
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(generate_csv)
+                csv_data = future.result()
+
+            response = HttpResponse(csv_data, content_type="text/csv")
+            response["Content-Disposition"] = "attachment; filename=tasks_export.csv"
+            return response
 
         except Exception as error:
             return Response({"message": str(error)}, status=HTTP_400_BAD_REQUEST)
