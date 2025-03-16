@@ -87,11 +87,11 @@ WSGI_APPLICATION = "taskmanager.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": os.environ.get("DATABASE_NAME", "tratoli"),
-        "USER": os.environ.get("DATABASE_USERNAME", "postgres"),
-        "PASSWORD": os.environ.get("DATABASE_PASSWORD", "admin"),
-        "HOST": os.environ.get("DATABASE_HOSTNAME", "db"),
-        "PORT": os.environ.get("DATABASE_PORT", "5432"),
+        "NAME": os.environ.get("DATABASE_NAME"),
+        "USER": os.environ.get("DATABASE_USERNAME"),
+        "PASSWORD": os.environ.get("DATABASE_PASSWORD"),
+        "HOST": os.environ.get("DATABASE_HOSTNAME"),
+        "PORT": os.environ.get("DATABASE_PORT"),
     }
 }
 
@@ -155,7 +155,7 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-CELERY_BROKER_URL =  os.getenv("REDIS_URL", "redis://redis:6379/0")
+CELERY_BROKER_URL =  os.getenv("REDIS_URL")
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 
@@ -166,3 +166,14 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("EMAIL_HOST_USER")
+
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.getenv("REDIS_URL"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
