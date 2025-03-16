@@ -10,3 +10,4 @@ django-celery-beat
 django-redis
 channels==3.0.5
 channels_redis
+drf-yasg

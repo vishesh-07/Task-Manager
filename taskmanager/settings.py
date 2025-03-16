@@ -48,7 +48,8 @@ INSTALLED_APPS = [
     "tasks",
     "users",
     "django_celery_beat",
-    "channels"
+    "channels",
+    "drf_yasg"
 ]
 
 MIDDLEWARE = [
