@@ -11,6 +11,7 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth.hashers import make_password
+from rest_framework.throttling import UserRateThrottle
 
 from .models import User
 from .serializers import (
@@ -28,6 +29,7 @@ class UserAuthViewSet(GenericViewSet):
     login_serializer = LoginSerializer
     user_profile_serializer = UserProfileSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     @action(
         methods=["post"],

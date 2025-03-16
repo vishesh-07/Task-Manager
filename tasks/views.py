@@ -22,6 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 from django.http import HttpResponse
 from io import StringIO
 import csv
+from rest_framework.throttling import UserRateThrottle
 
 from users.models import User
 from .serializers import TaskSerializer
@@ -36,6 +37,7 @@ class TasksViewSet(GenericViewSet, ListModelMixin):
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = PageNumberPagination
+    throttle_classes = [UserRateThrottle]
 
     def retrieve(self, request, *args, **kwargs):
         try:
