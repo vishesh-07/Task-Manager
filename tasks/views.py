@@ -1,3 +1,5 @@
+from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
@@ -16,6 +18,7 @@ from rest_framework.pagination import PageNumberPagination
 from users.models import User
 from .serializers import TaskSerializer
 from .models import Task
+from .tasks import send_task_assignment_email
 
 # Route - /tasks/
 
@@ -95,7 +98,8 @@ class TasksViewSet(GenericViewSet, ListModelMixin):
                 assigned_to=assigned_to,
                 created_by=request.user,
             )
-
+            send_task_assignment_email.delay(task.id)
+            
             serializer = self.get_serializer(task)
             return Response(
                 {"message": "Task Created", "data": serializer.data},
@@ -121,5 +125,41 @@ class TasksViewSet(GenericViewSet, ListModelMixin):
             task = get_object_or_404(Task, id=kwargs.get("pk"), created_by=request.user)
             task.delete()
             return Response({"message": "Task Deleted"}, status=HTTP_204_NO_CONTENT)
+        except Exception as error:
+            return Response({"message": str(error)}, status=HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["GET"], url_path="report")
+    def generate_report(self, request):
+        try:
+            tasks = Task.objects.values("priority", "status")
+
+            def count_completed():
+                return tasks.filter(status=Task.Status.COMPLETED).count()
+
+            def count_pending():
+                return tasks.filter(status=Task.Status.PENDING).count()
+
+            def categorize_by_priority():
+                priority_counts = Counter(task["priority"] for task in tasks)
+                return dict(priority_counts)
+
+            with ThreadPoolExecutor(max_workers=3) as executor:
+                completed_future = executor.submit(count_completed)
+                pending_future = executor.submit(count_pending)
+                priority_future = executor.submit(categorize_by_priority)
+
+                completed_count = completed_future.result()
+                pending_count = pending_future.result()
+                priority_stats = priority_future.result()
+
+            return Response(
+                {
+                    "completed_tasks": completed_count,
+                    "pending_tasks": pending_count,
+                    "tasks_by_priority": priority_stats,
+                },
+                status=HTTP_200_OK,
+            )
+
         except Exception as error:
             return Response({"message": str(error)}, status=HTTP_400_BAD_REQUEST)
