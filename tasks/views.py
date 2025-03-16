@@ -14,6 +14,8 @@ from rest_framework.status import (
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
+from django.core.cache import cache
+from urllib.parse import urlencode
 
 from users.models import User
 from .serializers import TaskSerializer
@@ -37,7 +39,18 @@ class TasksViewSet(GenericViewSet, ListModelMixin):
         except Exception as error:
             return Response({"message": str(error)}, status=HTTP_400_BAD_REQUEST)
 
+    def get_cache_key(self, request):
+        params = request.GET.dict()
+        sorted_params = sorted(params.items())
+        encoded = urlencode(sorted_params)
+        return f"tasks_list:{request.user.id}:{encoded}"
+
     def list(self, request, *args, **kwargs):
+        cache_key = self.get_cache_key(request)
+        cached_data = cache.get(cache_key)
+        
+        if cached_data is not None:
+            return Response(cached_data, status=HTTP_200_OK)
         try:
             title = request.GET.get("title", None)
             description = request.GET.get("description", None)
@@ -65,9 +78,11 @@ class TasksViewSet(GenericViewSet, ListModelMixin):
 
             if page is not None:
                 serializer = self.get_serializer(page, many=True)
+                cache.set(cache_key, serializer.data, timeout=60)
                 return self.get_paginated_response(serializer.data)
 
             serializer = self.get_serializer(tasks, many=True)
+            cache.set(cache_key, serializer.data, 60)
             return Response(serializer.data, status=HTTP_200_OK)
         except Exception as error:
             return Response({"message": str(error)}, status=HTTP_400_BAD_REQUEST)
@@ -99,7 +114,7 @@ class TasksViewSet(GenericViewSet, ListModelMixin):
                 created_by=request.user,
             )
             send_task_assignment_email.delay(task.id)
-            
+
             serializer = self.get_serializer(task)
             return Response(
                 {"message": "Task Created", "data": serializer.data},
