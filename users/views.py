@@ -39,14 +39,18 @@ class UserAuthViewSet(GenericViewSet):
     )
     def register(self, request):
         try:
-            name = request.data.get("name")
-            email = request.data.get("email")
-            password = request.data.get("password").strip()
+            serializer = self.registration_serializer(data=request.data)
 
-            if not email or not name or not password:
+            if not serializer.is_valid():
                 return Response(
-                    {"message": "All fields are required"}, status=HTTP_400_BAD_REQUEST
+                    {"message": "Validation failed", "errors": serializer.errors},
+                    status=HTTP_400_BAD_REQUEST
                 )
+            
+            validated_data = serializer.validated_data
+            name = validated_data.get("name")
+            email = validated_data.get("email")
+            password = validated_data.get("password")
 
             if User.objects.filter(email=email).exists():
                 return Response(

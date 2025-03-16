@@ -41,7 +41,7 @@ router.register(r"tasks", TasksViewSet, basename="tasks")
 urlpatterns = [
     path("api/", include(router.urls)),
     path("admin/", admin.site.urls),
-    path(
+    re_path(
         r"^swagger(?P<format>\.json|\.yaml)$",
         schema_view.without_ui(cache_timeout=0),
         name="schema-json",
