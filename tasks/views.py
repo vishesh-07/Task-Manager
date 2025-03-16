@@ -16,6 +16,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 from django.core.cache import cache
 from urllib.parse import urlencode
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 from users.models import User
 from .serializers import TaskSerializer
@@ -116,6 +118,14 @@ class TasksViewSet(GenericViewSet, ListModelMixin):
             send_task_assignment_email.delay(task.id)
 
             serializer = self.get_serializer(task)
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                "tasks",
+                {
+                    "type": "send_task_update",
+                    "message": serializer.data
+                }
+            )
             return Response(
                 {"message": "Task Created", "data": serializer.data},
                 status=HTTP_201_CREATED,
@@ -129,6 +139,14 @@ class TasksViewSet(GenericViewSet, ListModelMixin):
             serializer = self.serializer_class(task, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                f'task_{kwargs.get("pk")}',  # Specific task group
+                {
+                    "type": "send_task_update",
+                    "message": serializer.data
+                }
+            )
             return Response(
                 {"message": "Task Updated", "data": serializer.data}, status=HTTP_200_OK
             )

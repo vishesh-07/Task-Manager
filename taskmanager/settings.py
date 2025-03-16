@@ -47,7 +47,8 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "tasks",
     "users",
-    "django_celery_beat"
+    "django_celery_beat",
+    "channels"
 ]
 
 MIDDLEWARE = [
@@ -177,3 +178,16 @@ CACHES = {
         }
     }
 }
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [os.getenv("REDIS_URL")],
+        },
+    },
+}
+
+
+# Set ASGI application
+ASGI_APPLICATION = 'taskmanager.asgi.application'
