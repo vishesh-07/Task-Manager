@@ -79,7 +79,9 @@ Below are the available API endpoints for the project:
 ```bash
 docker-compose up --build -d
 ```
-
+```bash
+python manage.py generate_tasks # For generating fake tasks.
+```
 ## Screenshots
 ### API Response
 - `POST /api/auth/register`
