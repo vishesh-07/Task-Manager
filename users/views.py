@@ -75,7 +75,7 @@ class UserAuthViewSet(GenericViewSet):
                 {"message": "error", "error": str(error)}, status=HTTP_400_BAD_REQUEST
             )
 
-    @action(methods=["post"], detail=False, url_path="login")
+    @action(methods=["post"], detail=False, url_path="login", permission_classes=[AllowAny])
     def login(self, request):
         try:
             email = request.data.get("email")
